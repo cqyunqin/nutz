@@ -376,43 +376,26 @@ public class NutDao extends DaoSupport implements Dao {
 	}
 	
 	/*
-	 * 查询sql并把结果放入传入的class组成的List中,必须再修改了NutPojo类的toPreparedStatement方法
+	 * 查询sql并把结果放入传入的class组成的List中
 	 */
-	public <T> List<T> query(Class<T> classOfT,String sql,Condition cnd, Pager pager) {
-		NutPojo pojo = new NutPojo();
-		pojo.setEntity(getEntity(classOfT));
-		pojo.setSqlType(SqlType.SELECT)
-						.setSql(sql)
-						.setPager(pager)
-						.setAfter(_pojo_queryEntity)
-						.append(Pojos.Items.cnd(cnd))
-						.addParamsBy("*");
-		expert.formatQuery(pojo);
-		_exec(pojo);
-		return pojo.getList(classOfT);
+	public <T> List<T> query(Dao dao, Class<T> classOfT, String sql,
+			Condition cnd, Pager pager) {
+		Sql sql2 = Sqls.queryEntity(sql);
+		sql2.setEntity(dao.getEntity(classOfT));
+		sql2.setCondition(cnd);
+		sql2.setPager(pager);
+		dao.execute(sql2);
+		return sql2.getList(classOfT);
 	}
-	
+
 	/*
 	 * 查询某sql的结果条数
 	 */
-	public int queryCount(String sql) {
-		Sql sql2 = Sqls.create("select count(1) FROM ("+sql+")");
-		sql2.setCallback(new SqlCallback() {
-			private int tmp_l;
-			@Override
-			public Object invoke(Connection conn, ResultSet rs, Sql sql)
-					throws SQLException {
-				while (rs.next()){
-					tmp_l=rs.getInt(1);
-				}
-				return tmp_l;
-			}
-			
-		});
-		execute(sql2);
+	public int queryCount(Dao dao, String sql) {
+		Sql sql2 = Sqls.fetchLong("select count(1) FROM (" + sql + ")");
+		dao.execute(sql2);
 		return sql2.getInt();
 	}
-
 	public <T> int each(Class<T> classOfT, Condition cnd, Pager pager, Each<T> callback) {
 		Pojo pojo = pojoMaker.makeQuery(holder.getEntity(classOfT))
 								.append(Pojos.Items.cnd(cnd))
